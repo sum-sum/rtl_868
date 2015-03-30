@@ -76,13 +76,14 @@ int main (int argc, char **argv) {
 
   char* filename = 0;
   char* outfilename = 0;
+  char* dumpfilename = 0;
   int c;
   
   logging_init();
   
   opterr = 0;
   
-  while ((c = getopt (argc, argv, "vqf:o:")) != -1)
+  while ((c = getopt (argc, argv, "vqf:o:d:")) != -1)
     switch (c)
     {
       case 'v':
@@ -96,6 +97,12 @@ int main (int argc, char **argv) {
           logging_info( "Overriding previous -f flag '%s' with '%s'.\n", filename, optarg );
         }
         filename = optarg;
+        break;
+      case 'd':
+        if (dumpfilename != 0) {
+          logging_info( "Overriding previous -d flag '%s' with '%s'.\n", dumpfilename, optarg );
+        }
+        dumpfilename = optarg;
         break;
       case 'o':
         if (outfilename != 0) {
@@ -127,6 +134,7 @@ int main (int argc, char **argv) {
           "      -q          be less verbose.\n"
           "      -f file     open file instead of stdin.\n"
           "      -o file     open file instead of stdout.\n"
+          "      -d file     dump raw transmission samples to file.\n"
           "\n"
         );
         return 1;
@@ -161,6 +169,7 @@ int main (int argc, char **argv) {
      "under certain conditions; see the LICENSE file for details.\n"
   );
   
+  FILE *in, *out, *dump;
   if ((filename == 0) || (strcmp( filename, "-" ) == 0))
     in = stdin;
   else
@@ -187,11 +196,78 @@ int main (int argc, char **argv) {
     return 1;
   }
 
+  if (dumpfilename == 0)
+    dump = 0;
+  else if (strcmp( dumpfilename, "-" ) == 0)
+    dump = stdout;
+  else {
+    dump = fopen( dumpfilename, "w+" );
+  }
+  if (dump == 0) {
+    if (dumpfilename == 0) {
+      logging_info( "Not dumping raw transmissions.\n" );
+    } else {
+      logging_info( "Dumping file open error for '%s'.\n", dumpfilename );
+    }
+  }
+
+
+  int16_t last_tm[1024];
+  unsigned int tml;
+  int duplicate_transmission_input( int16_t transmission[], unsigned int length, int16_t noise, int16_t signal) {
+    tml = length < 1024 ? length : 1023;
+    memcpy( last_tm, transmission, sizeof(last_tm[0]) * tml );
+    return nrz.input( transmission, length, noise, signal );
+  }
+  bit_decoder_t mybd = { .init = 0, .input = &duplicate_transmission_input };
+
+  int duplicate_stream_input( int transmission[], unsigned int length, float bitlen ) {
+    if (dump != 0) {
+      /* dump into dump file */
+      int i, j;
+      int16_t d;
+      float t = 0;
+      j = 0;
+      for (i = 0; i<tml; i++) {
+        /* write raw sample */
+        fwrite( &last_tm[i], sizeof(last_tm[0]), 1, dump );
+        /* write binary sample */
+        fwrite( &d, sizeof(d), 1, dump );
+        /* calculate new binary sample */
+        if (t < 0) { // need next bit
+          if ((j>>3) < length) {
+            d = ((((transmission[j>>3] >> (7-((j)&7))) & 1) << 1) - 1) * 16000;
+          } else {
+            d = 0;
+          }
+          j++; // next bit
+          t += bitlen;
+        }
+        t -= 1; // time is running...
+      }
+      fflush( dump );
+    }
+    if ((ws300.input( transmission, length ) == 0) ||
+      (tx29.input(transmission, length ) == 0))
+      return 0;
+    else if (verbose > 1) {
+      if (length < 6) return -1;
+      fprintf( out, "__, %i, ", length );
+      while (length-- > 0)
+        fprintf( out, "%02x ", *transmission++ );
+      fprintf( out, "\n" );
+      fflush(out);
+      return 0;
+    } else {
+      return 0;
+    }
+  }
   stream_decoder_t mysd = { .init = 0, .input = &duplicate_stream_input };
+
   
   // construct the signal chain
   /* transmission decoder */
-  td.init( &nrz );
+  td.init( &mybd );
   /* nrz */
   nrz.init( &mysd );
   /* ws300 and tx29 */

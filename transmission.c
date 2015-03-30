@@ -36,7 +36,7 @@ typedef int32_t td_sample2x_t;
 
 /* where to handle received samples to */
 bit_decoder_t *td_next;
-int td_samples[TD_SAMPLES_LEN];
+td_sample_t td_samples[TD_SAMPLES_LEN];
 unsigned int td_samples_i;
 
 /// threshold: this many samples required into either

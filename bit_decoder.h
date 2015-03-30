@@ -22,6 +22,7 @@
 #define BIT_DECODER_H 1
 
 #include "stream_decoder.h"
+#include <stdint.h>
 
 /* interface for bit decoder */
 typedef struct {

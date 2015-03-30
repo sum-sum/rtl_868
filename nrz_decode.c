@@ -22,6 +22,7 @@
  */
 
 #include <stdlib.h>
+#include <stdint.h>
 #include "bit_decoder.h"
 #include "stream_decoder.h"
 #include "nrz_decode.h"
@@ -63,7 +64,13 @@ int nrz_input(int transmission[], unsigned int length, int noise, int signal) {
   unsigned int edge_times_i = 0;
   int last_level = 0; // always start with level zero
   int i;
-  
+//  int32_t transmission_mean = 0;
+//  for (i = 0; i<length; i++) {
+//    transmission_mean = transmission_mean + 1*transmission[i];
+//  }
+//  transmission_mean = transmission_mean / (signed)length;
+//  logging_info( "Transmission mean is %li.\n", transmission_mean );
+
   for (i = 0; i<length; i++) {
     edge_time++;
     // decrease or increase the counts for this level
