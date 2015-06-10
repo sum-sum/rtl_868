@@ -159,7 +159,7 @@ int main (int argc, char **argv) {
   if ((outfilename == 0) || (strcmp( outfilename, "-" ) == 0))
     out = stdout;
   else
-    out = fopen( outfilename, "r" );
+    out = fopen( outfilename, "a" );
   if (out == 0) {
     if (outfilename == 0) {
       logging_error( "Could not open stdout as output file.\n" );
