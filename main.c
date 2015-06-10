@@ -173,7 +173,7 @@ int main (int argc, char **argv) {
     if ((ws300.input( transmission, length) == 0) ||
       (tx29.input(transmission, length) == 0))
       return 0;
-    else {
+    else if (verbose > 1) {
       if (length < 6) return -1;
       fprintf( out, "__, %i, ", length );
       while (length-- > 0)
@@ -181,7 +181,9 @@ int main (int argc, char **argv) {
       fprintf( out, "\n" );
       fflush(out);
       return 0;
-    }      
+    } else {
+      return 0;
+    }
   }
   stream_decoder_t mysd = { .init = 0, .input = &duplicate_stream_input };
   
