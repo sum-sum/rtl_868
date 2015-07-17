@@ -48,7 +48,7 @@ void logging_restatus(void){
   }
 }
 void _logging_status(int module,  const char* f, ... ) {
-  if ((module >= LOGGING_MODULES) || (module < 0)) return;
+  if ((module >= LOGGING_MODULES) || (module < 0) || (verbose < 0)) return;
   va_list argp;
   va_start(argp, f);
   if (vsprintf( l_status[module], f, argp ) < 0)
