@@ -97,7 +97,7 @@ int tx29_input(int transmission[], unsigned length) {
   int weakbatt;
   if (len == 9) {
     // the tm is correct
-    sensid = ((tm[3] & 0x03C) << 2) | ((tm[4]>>6) & 0x03);
+    sensid = ((tm[3] & 0x0f) << 2) | ((tm[4]>>6) & 0x03);
     newbatt = (tm[4] >> 5) & 1;
     temp = 10.0 * (tm[4] & 0x0F) +  1.0 *((tm[5]>>4) & 0x0F) + 0.1 * (tm[5] & 0x0F) - 40.0;
     weakbatt = (tm[6]>>7) & 1;
