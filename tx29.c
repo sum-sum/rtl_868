@@ -53,9 +53,11 @@ int tx29_input(int transmission[], unsigned length) {
       tm[i] = ((transmission[i+ofs+1] | (transmission[i+ofs]<<8)) >> (8-shf)) & 0xFF;
     }
     logging_verbose( "Shift %i has ofs %i shf %i and data are %02x %02x %02x.\n", shift, ofs, shf, tm[0], tm[1], tm[2] );
-    // now check tm
-    if ((tm[0] == 0xaa) && (tm[1] == 0x2d) && (tm[2] == 0xd4))
+    /* now check tm - now with tx 21 support */
+    if ((tm[0] == 0x2d) && (tm[1] == 0xd4) && ((tm[2] &0xf0) == 0x90)) {
+      ofs--;
       break; // found !
+    }
   }
   if (shift >= length*8) {
     logging_warning( "Invalid preamble detected. Ignoring dataset.\n" );
