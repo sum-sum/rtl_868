@@ -37,24 +37,29 @@ bit_decoder_t *td_next;
 int td_samples[TD_SAMPLES_LEN];
 unsigned int td_samples_i;
 
-int td_init( bit_decoder_t *next ) {
-  if (next == 0) return -1;
-  td_next = next;
-  td_samples_i = 0;
-  logging_info( "Transmission decoder initialized.\n" );
-}
-
-
-td_sample2x_t td_mean = 500<<(sizeof(td_sample_t)*8);
-int td_transtime;
-td_sample2x_t td_sigpwr;
-
 /// threshold: this many samples required into either
 /// direction to detect a transmission
 #define TRANSMISSION_THRESHOLD 10
 /// this much must the amplitude exceed the mean amplitude
 /// for digital value detection
 #define SAMPLE_AMPLITUDE_FACTOR 2
+/// this many samples are kept before the transmission starts
+/// according to the TRANSMISSION_THRESHOLD and after
+/// it has ended
+#define SAMPLE_RESERVOIR 32
+
+td_sample2x_t td_mean = 500<<(sizeof(td_sample_t)*8);
+int td_transtime;
+td_sample2x_t td_sigpwr;
+int td_fade;
+
+int td_init( bit_decoder_t *next ) {
+  if (next == 0) return -1;
+  td_next = next;
+  td_samples_i = 0;
+  td_fade = 0;
+  logging_info( "Transmission decoder initialized.\n" );
+}
 
 int td_input( td_sample_t sample ) {
   // memorize the amplitude
@@ -76,28 +81,51 @@ int td_input( td_sample_t sample ) {
   int new_level;
   if ((sample > 0)) new_level = 1;
   else new_level = 0;
-  /* now check if start of transmission */
-  if ((new_transtime > TRANSMISSION_THRESHOLD) && (td_transtime <= TRANSMISSION_THRESHOLD)) {
-    logging_verbose( "Transmission started with level %i.\n", new_level );
-    td_samples_i = 0;
-  }
-  /* input bit if during transmission */
-  if ((new_transtime > TRANSMISSION_THRESHOLD)) {
-    if (td_samples_i >= TD_SAMPLES_LEN) td_samples_i = TD_SAMPLES_LEN - 1;
-    td_samples[td_samples_i++] = new_level;
-    // memorize the signal amplitude
-    td_sigpwr += abs(sample);
-  }
-  /* check for end of transmission */
-  if ((new_transtime <= TRANSMISSION_THRESHOLD) && (td_transtime > TRANSMISSION_THRESHOLD)) {
-    if (td_samples_i < 3 * TRANSMISSION_THRESHOLD) {
-      logging_verbose( "Dropping transmission, too shoft: %i samples, noise floor=%i, signal=%1.0f.\n", td_samples_i, (td_mean>>(sizeof(td_sample_t)*8)), (float)td_sigpwr/(float)td_samples_i );
-    } else {
-      logging_info( "Got Transmission of %i samples, noise floor=%i, signal=%1.0f.\n", td_samples_i, (td_mean>>(sizeof(td_sample_t)*8)), (float)td_sigpwr/(float)td_samples_i );
-      logging_status( 1, "n=%i, s=%1.0f, l=%i", (td_mean>>(sizeof(td_sample_t)*8)), (float)td_sigpwr/(float)td_samples_i, td_samples_i );
-      td_next->input( td_samples, td_samples_i );
+  // memorize the new sample
+  td_samples[td_samples_i++] = new_level;
+  if (td_samples_i >= TD_SAMPLES_LEN) td_samples_i = TD_SAMPLES_LEN - 1;
+  // see if we have no transmission
+  if ((new_transtime < TRANSMISSION_THRESHOLD) && (td_fade == 0)) {
+    // signal is weak and no transmission is running
+    if (td_samples_i >= SAMPLE_RESERVOIR) {
+      // only keep SAMPLE_RESERVOIR samples
+      memmove( &td_samples[0], &td_samples[td_samples_i - SAMPLE_RESERVOIR + 1], (SAMPLE_RESERVOIR - 1) * sizeof(td_samples[0]) );
+      td_samples_i = SAMPLE_RESERVOIR - 1;
     }
-    td_sigpwr = 0;
+  } else {
+    // either signal is strong or we had a transmission running
+    if (new_transtime >= TRANSMISSION_THRESHOLD) {
+      // signal is strong, so transmission is technically still running
+      if (td_fade == 0) {
+        // start of transmission
+        logging_verbose( "Start of transmission found.\n" );
+        td_sigpwr = 0;
+      } else {
+        // simply within a transmission
+      }
+      td_fade = SAMPLE_RESERVOIR;
+      // memorize the signal amplitude
+      td_sigpwr += abs(sample);
+    } else {
+      // signal is weak so transmission is over
+      td_fade--;
+      if (td_fade == 0) {
+        if ((float)td_sigpwr/(float)td_samples_i > td_mean >> (sizeof(td_sample_t)*8)) {
+          // last sample of transmission is recorded
+          if (td_samples_i < 3 * TRANSMISSION_THRESHOLD) {
+            logging_verbose( "Dropping transmission, too short: %i samples, noise floor=%i, signal=%1.0f.\n", td_samples_i, (td_mean>>(sizeof(td_sample_t)*8)), (float)td_sigpwr/(float)td_samples_i );
+          } else {
+            logging_info( "Got Transmission of %i samples, noise floor=%i, signal=%1.0f.\n", td_samples_i, (td_mean>>(sizeof(td_sample_t)*8)), (float)td_sigpwr/(float)td_samples_i );
+            logging_status( 1, "n=%i, s=%1.0f, l=%i", (td_mean>>(sizeof(td_sample_t)*8)), (float)td_sigpwr/(float)td_samples_i, td_samples_i );
+            td_next->input( td_samples, td_samples_i );
+          }
+        } else {
+          logging_verbose( "Transmission too weak: signal %1.0f, noise floor=%i.\n", (float)td_sigpwr/(float)td_samples_i, td_mean >> (sizeof(td_sample_t)*8) );
+        }
+      } else {
+        // still recording samples but transmission is already over.
+      }
+    }
   }
   td_transtime = new_transtime;
 }
