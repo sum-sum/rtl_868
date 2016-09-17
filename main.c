@@ -209,8 +209,8 @@ int main (int argc, char **argv) {
   while (1) {
     /* read a chunk */
     int n = fread( d, sizeof(d[0]), sizeof(d)/sizeof(d[0]), in );
-    if (n != sizeof(d)/sizeof(d[0])) {
-      logging_error( "\nError during read: %x.\n", n );
+    if (n == 0) {
+      logging_error( "\nEOF reached at %i.\n", ndata );
       break;
     } else {
       ndata += n;
@@ -241,7 +241,7 @@ int main (int argc, char **argv) {
     
     /* and put the chunk into the transmission decoder */
     int i;
-    for (i = 0; i<sizeof(d)/sizeof(d[0]); i++) {
+    for (i = 0; i<n; i++) {
       td.input( d[i] );
     }
   }
