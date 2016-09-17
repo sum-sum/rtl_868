@@ -29,7 +29,7 @@ typedef struct {
   char *shorthand;
   // interface
   int (*init)(stream_decoder_t *next);
-  int (*input)(int transmission[], unsigned int length);
+  int (*input)(int transmission[], unsigned int length, int noise, int signal);
 } bit_decoder_t;
 
 

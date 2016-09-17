@@ -51,7 +51,7 @@ int nrz_init(stream_decoder_t *next) {
   logging_info( "NRZ Decoder initialized.\n" );
 }
 
-int nrz_input(int transmission[], unsigned int length) {
+int nrz_input(int transmission[], unsigned int length, int noise, int signal) {
   /* decode the bits in transmission (1 per index) using NRZ */
   logging_verbose( "Got new transmission of length %i.\n", length );
   //
@@ -60,15 +60,15 @@ int nrz_input(int transmission[], unsigned int length) {
   int edge_time = 0;
   unsigned int edge_times[EDGE_TIMES_LEN];
   unsigned int edge_times_i = 0;
-  int last_level = transmission[0];
+  int last_level = 0; // always start with level zero
   int i;
   
   for (i = 0; i<length; i++) {
     edge_time++;
     // decrease or increase the counts for this level
-    if (transmission[i] == 1) {
+    if (transmission[i] > (signal + noise) >> 1) {
       level_counter++;
-    } else {
+    } else if (transmission[i] < -(signal + noise) >> 1) {
       level_counter--;
     }
     if (level_counter < 0) level_counter = 0;

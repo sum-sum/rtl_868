@@ -77,12 +77,8 @@ int td_input( td_sample_t sample ) {
   } else if (new_transtime < 0) {
     new_transtime = 0;
   }
-  // determine the new level of the incoming sample
-  int new_level;
-  if ((sample > 0)) new_level = 1;
-  else new_level = 0;
   // memorize the new sample
-  td_samples[td_samples_i++] = new_level;
+  td_samples[td_samples_i++] = sample;
   if (td_samples_i >= TD_SAMPLES_LEN) td_samples_i = TD_SAMPLES_LEN - 1;
   // see if we have no transmission
   if ((new_transtime < TRANSMISSION_THRESHOLD) && (td_fade == 0)) {
@@ -117,7 +113,7 @@ int td_input( td_sample_t sample ) {
           } else {
             logging_info( "Got Transmission of %i samples, noise floor=%i, signal=%1.0f.\n", td_samples_i, (td_mean>>(sizeof(td_sample_t)*8)), (float)td_sigpwr/(float)td_samples_i );
             logging_status( 1, "n=%i, s=%1.0f, l=%i", (td_mean>>(sizeof(td_sample_t)*8)), (float)td_sigpwr/(float)td_samples_i, td_samples_i );
-            td_next->input( td_samples, td_samples_i );
+            td_next->input( td_samples, td_samples_i, (td_mean>>(sizeof(td_sample_t)*8)), (int)((float)td_sigpwr/(float)td_samples_i) );
           }
         } else {
           logging_verbose( "Transmission too weak: signal %1.0f, noise floor=%i.\n", (float)td_sigpwr/(float)td_samples_i, td_mean >> (sizeof(td_sample_t)*8) );
