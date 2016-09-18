@@ -26,6 +26,7 @@
 
 /** calculate crc8 */
 uint8_t crc8( uint16_t poly, uint8_t *data, int len );
+int search_magic(int transmission[], unsigned length, uint8_t tm[], int tm_length, int magic[], int magic_length);
 
 
 
