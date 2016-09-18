@@ -39,6 +39,7 @@ int tx29_input(int transmission[], unsigned length) {
   unsigned int shift;
   unsigned int ofs;
   unsigned int shf;
+  int inv = 0;
   uint8_t tm[10];
   unsigned int i = 0;
   for (shift = 0; shift < length*8; shift++) {
@@ -54,15 +55,23 @@ int tx29_input(int transmission[], unsigned length) {
     }
     logging_verbose( "Shift %i has ofs %i shf %i and data are %02x %02x %02x.\n", shift, ofs, shf, tm[0], tm[1], tm[2] );
     // now check tm
-    if ((tm[0] == 0xaa) && (tm[1] == 0x2d) && (tm[2] == 0xd4))
+    if ((tm[0] == 0xaa) && (tm[1] == 0x2d) && (tm[2] == 0xd4)) {
+      inv = 0x00;
       break; // found !
+    }
+    // now check if we have invalidly inverted the data in nrz_decode.c
+    if ((tm[0] == 0x55) && (tm[1] == 0xd2) && (tm[2] == 0x2b)) {
+      logging_verbose( "Found inveted signature.\n" );
+      inv = 0xFF;
+      break;
+    }
   }
   if (shift >= length*8) {
     logging_warning( "Invalid preamble detected. Ignoring dataset.\n" );
     return -3;
   }
   // fill the remaining shifted data and empty bits with 0
-  for (i = 3; (i<sizeof(tm)/sizeof(tm[0])); i++) {
+  for (i = 0; (i<sizeof(tm)/sizeof(tm[0])); i++) {
     if (i+ofs+1 < length) {
       tm[i] = ((transmission[i+ofs+1] | (transmission[i+ofs]<<8)) >> (8-shf)) & 0xFF;
     } else if (i+ofs < length) {
@@ -70,8 +79,12 @@ int tx29_input(int transmission[], unsigned length) {
     } else {
       tm[i] = 0;
     }
+    tm[i] ^= inv;
   }
   ofs = length - ofs; // number of filled bytes in tm
+  if (ofs >= sizeof(tm)/sizeof(tm[0])) {
+    ofs = sizeof(tm)/sizeof(tm[0]);
+  }
   //
   logging_info( "Data packet after preamble detection: %i -> ", ofs );
   for (i = 0; (i<sizeof(tm)/sizeof(tm[0])); i++) {
@@ -80,12 +93,13 @@ int tx29_input(int transmission[], unsigned length) {
   _logging_info( ".\n" );
   // decode length
   unsigned len = (tm[3]>>4) & 0x0F;
-  if (len > (ofs - 4) * 2 + 1) {
+  len = (len + 1) >> 1; // convert to bytes
+  if (len > ofs - 4) {
     logging_warning( "Invalid length field. Ignoring dataset.\n" );
     return -4;
   }
   // check the checksum
-  uint8_t crc = crc8(0x131, &tm[3], (len >> 1) + 1);
+  uint8_t crc = crc8(0x131, &tm[3], len);
   if (crc != 0) {
     logging_warning( "Invalid checksum detected: %02x. Ignoring dataset.\n", crc );
     return -6;
@@ -95,7 +109,7 @@ int tx29_input(int transmission[], unsigned length) {
   float temp;
   float rel_hum;
   int weakbatt;
-  if (len == 9) {
+  if (len == 5) {
     // the tm is correct
     sensid = ((tm[3] & 0x0f) << 2) | ((tm[4]>>6) & 0x03);
     newbatt = (tm[4] >> 5) & 1;
