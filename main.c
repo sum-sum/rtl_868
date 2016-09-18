@@ -33,7 +33,9 @@
 #include <sys/timeb.h>
 
 #include <stdlib.h>
-
+#include <string.h>
+#include <ctype.h>
+#include <time.h>
 
 int data_to_string( float data, float* base, char* cexp ) {
   // convert the value of data to base + exponent notation
@@ -52,6 +54,23 @@ int data_to_string( float data, float* base, char* cexp ) {
   return 1;
 }
 
+FILE *in, *out;
+int duplicate_stream_input( int transmission[], unsigned int length ) {
+  if ((ws300.input( transmission, length) == 0) ||
+    (tx29.input(transmission, length) == 0))
+    return 0;
+  else if (verbose > 1) {
+    if (length < 6) return -1;
+    fprintf( out, "__, %i, ", length );
+    while (length-- > 0)
+      fprintf( out, "%02x ", *transmission++ );
+    fprintf( out, "\n" );
+    fflush(out);
+    return 0;
+  } else {
+    return 0;
+  }
+}
 
 int main (int argc, char **argv) {
 
@@ -142,7 +161,6 @@ int main (int argc, char **argv) {
      "under certain conditions; see the LICENSE file for details.\n"
   );
   
-  FILE *in, *out;
   if ((filename == 0) || (strcmp( filename, "-" ) == 0))
     in = stdin;
   else
@@ -169,22 +187,6 @@ int main (int argc, char **argv) {
     return 1;
   }
 
-  int duplicate_stream_input( int transmission[], unsigned int length ) {
-    if ((ws300.input( transmission, length) == 0) ||
-      (tx29.input(transmission, length) == 0))
-      return 0;
-    else if (verbose > 1) {
-      if (length < 6) return -1;
-      fprintf( out, "__, %i, ", length );
-      while (length-- > 0)
-        fprintf( out, "%02x ", *transmission++ );
-      fprintf( out, "\n" );
-      fflush(out);
-      return 0;
-    } else {
-      return 0;
-    }
-  }
   stream_decoder_t mysd = { .init = 0, .input = &duplicate_stream_input };
   
   // construct the signal chain
@@ -203,7 +205,12 @@ int main (int argc, char **argv) {
   unsigned long long int last_ndata = 0;
   
   struct timespec last_status;
+#ifdef __APPLE__
+  last_status.tv_sec = time(NULL);
+  last_status.tv_nsec = 0;
+#else
   clock_gettime( CLOCK_MONOTONIC, &last_status );
+#endif
   
   // read from stdin S16LE data
   while (1) {
@@ -217,10 +224,15 @@ int main (int argc, char **argv) {
     }
 
     struct timespec now;
+#ifdef __APPLE__
+    now.tv_sec = time(NULL);
+    now.tv_nsec = 0;
+#else
     clock_gettime( CLOCK_MONOTONIC, &now );
+#endif
     // if time is over, redisplay status
     float dt = 1.0 * (now.tv_sec - last_status.tv_sec) + 1.0 * (now.tv_nsec - last_status.tv_nsec) / 1e9;
-    if (dt > 1) {
+    if (dt >= 1) {
       // calculate new throughput
       float throughput = (ndata - last_ndata) / dt;
       last_ndata = ndata;
