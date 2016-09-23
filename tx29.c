@@ -43,7 +43,7 @@ int tx29_input(int transmission[], unsigned length) {
   // find magic
   ofs = search_magic( transmission, length, tm, sizeof(tm)/sizeof(tm[0]), magic, 8*sizeof(magic)/sizeof(magic[0]) );
   if (ofs == 0) {
-    return;
+    return -1;
   }
   //
   logging_info( "Data packet after preamble detection: %i -> ", ofs );

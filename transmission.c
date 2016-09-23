@@ -20,6 +20,8 @@
 
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 #include "sample_decoder.h"
 #include "transmission.h"
 #include "logging.h"

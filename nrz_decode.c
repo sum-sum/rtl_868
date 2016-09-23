@@ -21,6 +21,7 @@
 /** Non-Return-to-Zero decoding routine
  */
 
+#include <stdlib.h>
 #include "bit_decoder.h"
 #include "stream_decoder.h"
 #include "nrz_decode.h"
