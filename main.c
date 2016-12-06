@@ -36,7 +36,11 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <fcntl.h>
 
+#if defined(__MINGW32__) || defined(__MINGW64__)
+#include "os/windows.h"
+#endif
 int data_to_string( float data, float* base, char* cexp ) {
   // convert the value of data to base + exponent notation
   int exp = 0;
@@ -164,7 +168,7 @@ int main (int argc, char **argv) {
   if ((filename == 0) || (strcmp( filename, "-" ) == 0))
     in = stdin;
   else
-    in = fopen( filename, "r" );
+    in = fopen( filename, "rb" );
   if (in == 0) {
     if (filename == 0) {
       logging_error( "Could not open stdin as input file.\n" );
@@ -173,7 +177,9 @@ int main (int argc, char **argv) {
     }
     return 1;
   }
-
+#if defined(__MINGW32__) || defined(__MINGW64__)
+  setmode(fileno(in), O_BINARY);
+#endif
   if ((outfilename == 0) || (strcmp( outfilename, "-" ) == 0))
     out = stdout;
   else
@@ -186,6 +192,7 @@ int main (int argc, char **argv) {
     }
     return 1;
   }
+
 
   stream_decoder_t mysd = { .init = 0, .input = &duplicate_stream_input };
   
@@ -208,6 +215,9 @@ int main (int argc, char **argv) {
 #ifdef __APPLE__
   last_status.tv_sec = time(NULL);
   last_status.tv_nsec = 0;
+#elif defined(__MINGW32__) || defined(__MINGW64__)
+  last_status.tv_sec = time(NULL);
+  last_status.tv_nsec = 0;
 #else
   clock_gettime( CLOCK_MONOTONIC, &last_status );
 #endif
@@ -216,15 +226,22 @@ int main (int argc, char **argv) {
   while (1) {
     /* read a chunk */
     int n = fread( d, sizeof(d[0]), sizeof(d)/sizeof(d[0]), in );
-    if (n == 0) {
+    if (feof(in)) {
       logging_error( "\nEOF reached at %i.\n", ndata );
       break;
+    }
+    if (n == 0) {
+      logging_error( "\n0 data readed at %i.\n", ndata );
+      continue;
     } else {
       ndata += n;
     }
 
     struct timespec now;
 #ifdef __APPLE__
+    now.tv_sec = time(NULL);
+    now.tv_nsec = 0;
+#elif defined(__MINGW32__) || defined(__MINGW64__)
     now.tv_sec = time(NULL);
     now.tv_nsec = 0;
 #else
@@ -244,9 +261,12 @@ int main (int argc, char **argv) {
       char tp_e;
       float tp_b;
       data_to_string( throughput, &tp_b, &tp_e );
-      logging_status( 0, "%s -> %s, %1.1f%c, %1.1f%c", filename, outfilename, nd_b, nd_e, tp_b, tp_e );
-    
-      logging_restatus();
+	  	
+		if (verbose > 1) {
+			logging_status( 0, "%s -> %s, %1.1f%c, %1.1f%c", filename, outfilename, nd_b, nd_e, tp_b, tp_e );
+			logging_restatus();
+		}
+	  
       last_status.tv_sec = now.tv_sec;
       last_status.tv_nsec = now.tv_nsec;
     }
@@ -257,6 +277,6 @@ int main (int argc, char **argv) {
       td.input( d[i] );
     }
   }
-
+  printf("Program terminated\n");
   fclose(in);
 }

@@ -19,10 +19,15 @@
 
 # for debugging
 # CFLAGS += -ggdb
+#-l : 
 LDFLAGS += -lrt
+W32_LDFLAGS += 
 
 rtl_868: ws300.o transmission.o nrz_decode.o main.o logging.o tx29.o tools.o data_logger.o
 	${CC} ${LDFLAGS} $^ -o $@
+
+rtl_868.exe: ws300.o transmission.o nrz_decode.o main.o logging.o tx29.o tools.o data_logger.o
+	${CC} ${W32_LDFLAGS} $^ -o $@
 
 %.lss: %
 	objdump -xS $< > $@

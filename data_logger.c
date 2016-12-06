@@ -20,6 +20,7 @@
 
 #include "logging.h"
 #include "data_logger.h"
+#include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
 
