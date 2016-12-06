@@ -36,6 +36,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <fcntl.h>
 
 #if defined(__MINGW32__) || defined(__MINGW64__)
 #include "os/windows.h"
@@ -176,7 +177,9 @@ int main (int argc, char **argv) {
     }
     return 1;
   }
-
+#if defined(__MINGW32__) || defined(__MINGW64__)
+  setmode(fileno(in), O_BINARY);
+#endif
   if ((outfilename == 0) || (strcmp( outfilename, "-" ) == 0))
     out = stdout;
   else
@@ -189,6 +192,9 @@ int main (int argc, char **argv) {
     }
     return 1;
   }
+#if defined(__MINGW32__) || defined(__MINGW64__)
+  setmode(fileno(out), O_BINARY);
+#endif
 
   stream_decoder_t mysd = { .init = 0, .input = &duplicate_stream_input };
   
@@ -222,10 +228,13 @@ int main (int argc, char **argv) {
   while (1) {
     /* read a chunk */
     int n = fread( d, sizeof(d[0]), sizeof(d)/sizeof(d[0]), in );
-
-    if (n == 0) {
+    if (feof(in)) {
       logging_error( "\nEOF reached at %i.\n", ndata );
       break;
+    }
+    if (n == 0) {
+      logging_error( "\n0 data readed at %i.\n", ndata );
+      continue;
     } else {
       ndata += n;
     }
