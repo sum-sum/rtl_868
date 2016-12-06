@@ -37,6 +37,9 @@
 #include <ctype.h>
 #include <time.h>
 
+#if defined(__MINGW32__) || defined(__MINGW64__)
+#include "os/windows.h"
+#endif
 int data_to_string( float data, float* base, char* cexp ) {
   // convert the value of data to base + exponent notation
   int exp = 0;
@@ -208,6 +211,8 @@ int main (int argc, char **argv) {
 #ifdef __APPLE__
   last_status.tv_sec = time(NULL);
   last_status.tv_nsec = 0;
+#elif defined(__MINGW32__) || defined(__MINGW64__)
+  clock_gettime_w32(0, &last_status);
 #else
   clock_gettime( CLOCK_MONOTONIC, &last_status );
 #endif
@@ -227,8 +232,10 @@ int main (int argc, char **argv) {
 #ifdef __APPLE__
     now.tv_sec = time(NULL);
     now.tv_nsec = 0;
+#elif defined(__MINGW32__) || defined(__MINGW64__)
+  clock_gettime_w32(0, &now);
 #else
-    clock_gettime( CLOCK_MONOTONIC, &now );
+  clock_gettime( CLOCK_MONOTONIC, &now );
 #endif
     // if time is over, redisplay status
     float dt = 1.0 * (now.tv_sec - last_status.tv_sec) + 1.0 * (now.tv_nsec - last_status.tv_nsec) / 1e9;
