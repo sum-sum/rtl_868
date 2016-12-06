@@ -183,7 +183,7 @@ int main (int argc, char **argv) {
   if ((outfilename == 0) || (strcmp( outfilename, "-" ) == 0))
     out = stdout;
   else
-    out = fopen( outfilename, "ab" );
+    out = fopen( outfilename, "a" );
   if (out == 0) {
     if (outfilename == 0) {
       logging_error( "Could not open stdout as output file.\n" );
@@ -192,9 +192,7 @@ int main (int argc, char **argv) {
     }
     return 1;
   }
-#if defined(__MINGW32__) || defined(__MINGW64__)
-  setmode(fileno(out), O_BINARY);
-#endif
+
 
   stream_decoder_t mysd = { .init = 0, .input = &duplicate_stream_input };
   
@@ -218,7 +216,7 @@ int main (int argc, char **argv) {
   last_status.tv_sec = time(NULL);
   last_status.tv_nsec = 0;
 #elif defined(__MINGW32__) || defined(__MINGW64__)
-    last_status.tv_sec = time(NULL);
+  last_status.tv_sec = time(NULL);
   last_status.tv_nsec = 0;
 #else
   clock_gettime( CLOCK_MONOTONIC, &last_status );
@@ -244,10 +242,10 @@ int main (int argc, char **argv) {
     now.tv_sec = time(NULL);
     now.tv_nsec = 0;
 #elif defined(__MINGW32__) || defined(__MINGW64__)
-    last_status.tv_sec = time(NULL);
-  last_status.tv_nsec = 0;
+    now.tv_sec = time(NULL);
+    now.tv_nsec = 0;
 #else
-  clock_gettime( CLOCK_MONOTONIC, &now );
+    clock_gettime( CLOCK_MONOTONIC, &now );
 #endif
     // if time is over, redisplay status
     float dt = 1.0 * (now.tv_sec - last_status.tv_sec) + 1.0 * (now.tv_nsec - last_status.tv_nsec) / 1e9;
@@ -263,9 +261,12 @@ int main (int argc, char **argv) {
       char tp_e;
       float tp_b;
       data_to_string( throughput, &tp_b, &tp_e );
-      logging_status( 0, "%s -> %s, %1.1f%c, %1.1f%c", filename, outfilename, nd_b, nd_e, tp_b, tp_e );
-    
-      logging_restatus();
+	  	
+		if (verbose > 1) {
+			logging_status( 0, "%s -> %s, %1.1f%c, %1.1f%c", filename, outfilename, nd_b, nd_e, tp_b, tp_e );
+			logging_restatus();
+		}
+	  
       last_status.tv_sec = now.tv_sec;
       last_status.tv_nsec = now.tv_nsec;
     }
