@@ -167,7 +167,7 @@ int main (int argc, char **argv) {
   if ((filename == 0) || (strcmp( filename, "-" ) == 0))
     in = stdin;
   else
-    in = fopen( filename, "r" );
+    in = fopen( filename, "rb" );
   if (in == 0) {
     if (filename == 0) {
       logging_error( "Could not open stdin as input file.\n" );
@@ -180,7 +180,7 @@ int main (int argc, char **argv) {
   if ((outfilename == 0) || (strcmp( outfilename, "-" ) == 0))
     out = stdout;
   else
-    out = fopen( outfilename, "a" );
+    out = fopen( outfilename, "ab" );
   if (out == 0) {
     if (outfilename == 0) {
       logging_error( "Could not open stdout as output file.\n" );
@@ -212,7 +212,8 @@ int main (int argc, char **argv) {
   last_status.tv_sec = time(NULL);
   last_status.tv_nsec = 0;
 #elif defined(__MINGW32__) || defined(__MINGW64__)
-  clock_gettime_w32(0, &last_status);
+    last_status.tv_sec = time(NULL);
+  last_status.tv_nsec = 0;
 #else
   clock_gettime( CLOCK_MONOTONIC, &last_status );
 #endif
@@ -221,6 +222,7 @@ int main (int argc, char **argv) {
   while (1) {
     /* read a chunk */
     int n = fread( d, sizeof(d[0]), sizeof(d)/sizeof(d[0]), in );
+
     if (n == 0) {
       logging_error( "\nEOF reached at %i.\n", ndata );
       break;
@@ -233,7 +235,8 @@ int main (int argc, char **argv) {
     now.tv_sec = time(NULL);
     now.tv_nsec = 0;
 #elif defined(__MINGW32__) || defined(__MINGW64__)
-  clock_gettime_w32(0, &now);
+    last_status.tv_sec = time(NULL);
+  last_status.tv_nsec = 0;
 #else
   clock_gettime( CLOCK_MONOTONIC, &now );
 #endif
@@ -264,6 +267,6 @@ int main (int argc, char **argv) {
       td.input( d[i] );
     }
   }
-
+  printf("Program terminated\n");
   fclose(in);
 }
