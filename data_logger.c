@@ -22,6 +22,7 @@
 #include "data_logger.h"
 #include <time.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 /// time at start of program
 time_t dl_file_start;
@@ -41,11 +42,18 @@ int dl_file_input(int sensor_id, float temp, float rel_hum, int flags) {
   
   time_t cur_time;
   struct tm ts;
-  if ((time( &cur_time ) == 0) || (localtime_r(&cur_time, &ts) == 0)) {
+  struct tm * pts;
+#if _POSIX_C_SOURCE >= 1 || _XOPEN_SOURCE || _BSD_SOURCE || _SVID_SOURCE || _POSIX_SOURCE
+  if ((time( &cur_time ) == 0) || ( (pts = localtime_r(&cur_time, &ts)) == 0)) {
+#else
+  if ((time( &cur_time ) == 0) || ( (pts = localtime(&cur_time)) == 0)) {
+#endif
     logging_error( "Could not get current time.\n" );
     ts.tm_year = 0; ts.tm_mon = 0; ts.tm_mday = 0;
     ts.tm_hour = 0; ts.tm_min = 0; ts.tm_sec = 0;
-  } 
+  } else {
+    ts = *pts;
+  }
   double time_sec = difftime( cur_time, dl_file_start );
 
   logging_info( "%04i-%02i-%02i %02i:%02i:%02i, %lli, %i, %1.2f, %1.2f, %i.\n", ts.tm_year+1900, ts.tm_mon+1, ts.tm_mday, ts.tm_hour, ts.tm_min, ts.tm_sec, (long long int)cur_time, sensor_id, temp, rel_hum, flags );
