@@ -1,6 +1,14 @@
 # rtl_868
-Reciever software for FM modulated temperature stations.
+Receiver software for FM modulated temperature stations.
 
-compile: 'make'
-run: rtl_fm -f 868.26e6 -M fm -s 500k -r 75k -g 42 -A fast | ./rtl_868 > dump-file.txt
+compile:
+```
+make
+```
+optionally with cmake
 
+
+run requires `rtl_fm`, e.g. from https://github.com/librtlsdr/librtlsdr
+```
+rtl_fm -f 868.26e6 -M fm -s 500k -r 75k -g 42 -A fast | ./rtl_868 > dump-file.txt
+```
